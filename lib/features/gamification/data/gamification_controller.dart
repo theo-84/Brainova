@@ -23,7 +23,7 @@ class GamificationController {
       'id': 'scroll_slayer',
       'name': 'Scroll Slayer',
       'description': 'Keep Brain Rot below 20% for 3 days',
-      'condition': 'currentStreak >= 3 && currentBrainRotLevel < 20',
+      'condition': 'currentStreak >= 3 && currentBrainRotScore < 20',
     },
     {
       'id': 'digital_warrior',

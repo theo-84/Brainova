@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../features/gamification/data/streak_controller.dart';
+import '../../domain/daily_stats_provider.dart';
 
 class BrainRotMeterWidget extends ConsumerStatefulWidget {
-  final int level; // 0 to 100
+  final int score; // 0 to 100
 
-  const BrainRotMeterWidget({super.key, required this.level});
+  const BrainRotMeterWidget({super.key, required this.score});
 
   @override
   ConsumerState<BrainRotMeterWidget> createState() =>
@@ -40,7 +41,7 @@ class _BrainRotMeterWidgetState extends ConsumerState<BrainRotMeterWidget>
   void _setupCountAnimation() {
     _countAnimation = IntTween(
       begin: 0,
-      end: widget.level,
+      end: widget.score,
     ).animate(
       CurvedAnimation(
         parent: _countController,
@@ -52,7 +53,7 @@ class _BrainRotMeterWidgetState extends ConsumerState<BrainRotMeterWidget>
   @override
   void didUpdateWidget(BrainRotMeterWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.level != widget.level) {
+    if (oldWidget.score != widget.score) {
       _setupCountAnimation();
       _countController.forward(from: 0);
     }
@@ -68,15 +69,16 @@ class _BrainRotMeterWidgetState extends ConsumerState<BrainRotMeterWidget>
   @override
   Widget build(BuildContext context) {
     final streakUser = ref.watch(streakControllerProvider);
+    final dailyStatsAsync = ref.watch(dailyStatsProvider);
     final currentStreak = streakUser?.currentStreak ?? 0;
 
     Color meterColor;
     String statusText;
 
-    if (widget.level < 40) {
+    if (widget.score < 40) {
       meterColor = AppTheme.success;
       statusText = "Healthy";
-    } else if (widget.level < 70) {
+    } else if (widget.score < 70) {
       meterColor = AppTheme.warning;
       statusText = "Caution";
     } else {
@@ -99,106 +101,127 @@ class _BrainRotMeterWidgetState extends ConsumerState<BrainRotMeterWidget>
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceHighlight,
-                      shape: BoxShape.circle,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: AppTheme.surfaceHighlight,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.bubble_chart,
+                        size: 20,
+                        color: AppTheme.primaryVariant,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.bubble_chart,
-                      size: 20,
-                      color: AppTheme.primaryVariant,
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Brain Rot Meter',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: meterColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: meterColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Brain Rot Meter',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            AnimatedBuilder(
+              animation: _waveController,
+              builder: (context, _) {
+                return SizedBox(
+                  width: 200,
+                  height: 200,
+                  child: CustomPaint(
+                    painter: _LiquidPainter(
+                      progress: widget.score / 100,
+                      wavePhase: _waveController.value * 2 * pi,
+                      particlePhase: _waveController.value,
+                      color: meterColor,
+                    ),
                   ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: meterColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  statusText,
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            AnimatedBuilder(
+              animation: _countAnimation,
+              builder: (context, _) {
+                return Text(
+                  '${_countAnimation.value}',
                   style: TextStyle(
-                    color: meterColor,
+                    fontFamily: 'MontserratAlt',
+                    fontSize: 42,
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          AnimatedBuilder(
-            animation: _waveController,
-            builder: (context, _) {
-              return SizedBox(
-                width: 200,
-                height: 200,
-                child: CustomPaint(
-                  painter: _LiquidPainter(
-                    progress: widget.level / 100,
-                    wavePhase: _waveController.value * 2 * pi,
-                    particlePhase: _waveController.value,
                     color: meterColor,
+                    letterSpacing: 1.5,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 32),
+            // Mini Stats Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _MiniStat(
+                  label: 'Current Streak',
+                  value: '$currentStreak days',
+                  icon: Icons.local_fire_department,
+                  color: AppTheme.warning,
+                ),
+                dailyStatsAsync.when(
+                  data: (stats) => _MiniStat(
+                    label: 'Mind Resets',
+                    value: (stats['resets'] ?? 0).toString(),
+                    icon: Icons.emoji_events,
+                    color: AppTheme.success,
+                  ),
+                  loading: () => const _MiniStat(
+                    label: 'Mind Resets',
+                    value: '...',
+                    icon: Icons.emoji_events,
+                    color: AppTheme.success,
+                  ),
+                  error: (_, __) => const _MiniStat(
+                    label: 'Mind Resets',
+                    value: '!',
+                    icon: Icons.emoji_events,
+                    color: AppTheme.success,
                   ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          AnimatedBuilder(
-            animation: _countAnimation,
-            builder: (context, _) {
-              return Text(
-                '${_countAnimation.value}',
-                style: TextStyle(
-                  fontFamily: 'MontserratAlt',
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  color: meterColor,
-                  letterSpacing: 1.5,
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 32),
-          // Mini Stats Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _MiniStat(
-                label: 'Current Streak',
-                value: '$currentStreak days',
-                icon: Icons.local_fire_department,
-                color: AppTheme.warning,
-              ),
-              _MiniStat(
-                label: 'Mind Resets',
-                value: '12',
-                icon: Icons.emoji_events,
-                color: AppTheme.success,
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -297,7 +320,7 @@ class _LiquidPainter extends CustomPainter {
     canvas.clipPath(clipPath);
 
     // LIQUID WAVE
-    final waveHeight = 14.0;
+    const waveHeight = 14.0;
     final baseHeight = size.height * (1 - progress);
 
     final wavePath = Path()..moveTo(0, baseHeight);

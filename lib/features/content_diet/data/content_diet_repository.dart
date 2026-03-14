@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'content_diet_model.dart';
-import '../../auth/data/auth_repository.dart';
+import '../../auth/data/auth_providers.dart';
 import '../../tracking/data/activity_repository.dart';
 import '../../tracking/data/activity_model.dart';
 
@@ -48,35 +48,20 @@ class ContentDietRepository {
   }
 
   Future<List<ContentDietEntry>> getRecentEntries(String uid) async {
-    final snapshot = await _firestore
-        .collection('activities')
-        .where('uid', isEqualTo: uid)
-        .limit(40) // Fetch more to allow in-memory filtering/sorting
-        .get();
+    // Use centralized repository to fetch activities
+    final activities = await _activityRepo.getRecentActivities(uid,
+        limit: 20, includeAuto: false);
 
-    final entries = snapshot.docs.map((doc) {
-      final data = doc.data();
-      final typeStr = data['type'] as String;
-      final type = ActivityType.values.firstWhere((e) => e.name == typeStr,
-          orElse: () => ActivityType.junk);
-
-      final timestampStr = data['timestamp'] as String?;
-
+    return activities.map((activity) {
       return ContentDietEntry(
-        id: doc.id,
+        id: activity.id,
         uid: uid,
-        date: timestampStr != null
-            ? DateTime.tryParse(timestampStr) ?? DateTime.now()
-            : DateTime.now(),
-        category: _mapActivityTypeToCategory(type),
-        minutes: (data['durationSeconds'] as int) ~/ 60,
-        notes: data['notes'],
+        date: activity.timestamp,
+        category: _mapActivityTypeToCategory(activity.type),
+        minutes: activity.durationSeconds ~/ 60,
+        notes: activity.notes,
       );
     }).toList();
-
-    // Sort in memory to avoid index error
-    entries.sort((a, b) => b.date.compareTo(a.date));
-    return entries.take(20).toList();
   }
 
   ActivityType _mapCategoryToActivityType(DietCategory cat) {
@@ -85,8 +70,6 @@ class ContentDietRepository {
         return ActivityType.learning;
       case DietCategory.entertainment:
         return ActivityType.entertainment;
-      case DietCategory.news:
-        return ActivityType.news;
       case DietCategory.social:
         return ActivityType.social;
       case DietCategory.junk:
@@ -102,8 +85,6 @@ class ContentDietRepository {
         return DietCategory.learning;
       case ActivityType.entertainment:
         return DietCategory.entertainment;
-      case ActivityType.news:
-        return DietCategory.news;
       case ActivityType.social:
         return DietCategory.social;
       case ActivityType.junk:
@@ -119,8 +100,6 @@ class ContentDietRepository {
         return (minutes * 2.0).round();
       case DietCategory.junk:
         return (minutes * 2.2).round();
-      case DietCategory.news:
-        return (minutes * 0.8).round();
       case DietCategory.entertainment:
         return (minutes * 1.5).round();
       case DietCategory.learning:

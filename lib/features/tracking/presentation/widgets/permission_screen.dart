@@ -3,8 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:brainova/features/tracking/data/activity_repository.dart';
-import 'package:brainova/features/auth/data/auth_repository.dart';
-import 'package:brainova/core/service/notification_service.dart';
+import 'package:brainova/features/auth/data/auth_providers.dart';
 
 class PermissionCheckerScreen extends ConsumerStatefulWidget {
   const PermissionCheckerScreen({super.key});
@@ -29,26 +28,28 @@ class _PermissionCheckerScreenState
     final isAndroid =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     if (!isAndroid) {
-      // Give the router/context a moment to be ready
-      await Future.delayed(const Duration(milliseconds: 100));
-      if (mounted) context.go('/home');
+      // Logic handled via listener for auth state
       return;
     }
 
-    final auth = ref.read(authRepositoryProvider);
     final repo = ref.read(activityRepositoryProvider);
     final hasPermission = await repo.checkRealDataAvailability();
 
     if (!mounted) return;
 
-    if (hasPermission) {
-      if (auth.currentUser != null) {
-        context.go('/home');
-      } else {
-        context.go('/intro');
-      }
-    } else {
+    if (!hasPermission) {
       setState(() => _isChecking = false);
+    }
+    // If hasPermission, the ref.listen in build will handle navigation
+    // once auth state is resolved.
+  }
+
+  void _navigateToNext(UserModel? user) {
+    if (!mounted) return;
+    if (user != null) {
+      context.go('/home');
+    } else {
+      context.go('/intro');
     }
   }
 
@@ -67,6 +68,26 @@ class _PermissionCheckerScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Reactive listener for auth state to handle redirects robustly
+    ref.listen<AsyncValue<UserModel?>>(authStateProvider, (previous, next) {
+      next.whenData((user) async {
+        final isAndroid =
+            !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+        if (!isAndroid) {
+          _navigateToNext(user);
+          return;
+        }
+
+        final repo = ref.read(activityRepositoryProvider);
+        final hasPermission = await repo.checkRealDataAvailability();
+
+        if (hasPermission && mounted) {
+          _navigateToNext(user);
+        }
+      });
+    });
+
     if (_isChecking) {
       return _buildSplashScreen();
     }
@@ -75,7 +96,7 @@ class _PermissionCheckerScreenState
   }
 
   Widget _buildSplashScreen() {
-    return Scaffold(
+    return const Scaffold(
       body: Center(
         child: CircularProgressIndicator(),
       ),
@@ -107,21 +128,6 @@ class _PermissionCheckerScreenState
             ElevatedButton(
               onPressed: _openSettings,
               child: const Text('Open Settings'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Triggering test notification...')),
-                );
-                await NotificationService().showNotification(
-                  title: "Test Notification",
-                  body: "If you see this, notifications are working!",
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              child: const Text('Test Notification'),
             ),
             const SizedBox(height: 16),
           ],

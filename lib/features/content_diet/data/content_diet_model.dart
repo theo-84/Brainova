@@ -1,4 +1,4 @@
-enum DietCategory { learning, entertainment, junk, news, social }
+enum DietCategory { learning, entertainment, junk, social }
 
 class ContentDietEntry {
   final String id;

@@ -2,10 +2,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../domain/challenge_model.dart';
 import '../providers/challenge_provider.dart';
 
 class ChallengeCard extends ConsumerWidget {
-  const ChallengeCard({super.key});
+  final Challenge challenge;
+  const ChallengeCard({super.key, required this.challenge});
 
   String _format(Duration d) {
     final h = d.inHours.toString().padLeft(2, '0');
@@ -15,7 +17,7 @@ class ChallengeCard extends ConsumerWidget {
   }
 
   double _progress(Duration remaining) {
-    const totalSeconds = 24 * 60 * 60;
+    final totalSeconds = challenge.duration * 24 * 60 * 60;
     final rem = remaining.inSeconds.clamp(0, totalSeconds);
     final completed = totalSeconds - rem;
     return (completed / totalSeconds).clamp(0.0, 1.0);
@@ -23,7 +25,7 @@ class ChallengeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const challengeId = "dopamine_fast";
+    final challengeId = challenge.id;
 
     final state = ref.watch(challengeControllerProvider(challengeId));
     final controller =
@@ -49,18 +51,19 @@ class ChallengeCard extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          const Text(
-            "Dopamine Fast",
-            style: TextStyle(
+          Text(
+            challenge.title,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            "24 Hours • Become Hard to Distract",
-            style: TextStyle(color: AppTheme.textSecondary),
+          Text(
+            "${challenge.duration} Days • ${challenge.description}",
+            style: const TextStyle(color: AppTheme.textSecondary),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
           if (joined) ...[
@@ -133,8 +136,12 @@ class ChallengeCard extends ConsumerWidget {
             child: Column(
               children: [
                 ElevatedButton(
-                  onPressed:
-                      state.loading ? null : (joined ? null : controller.join),
+                  onPressed: state.loading
+                      ? null
+                      : (joined
+                          ? null
+                          : () => controller
+                              .join(Duration(days: challenge.duration))),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: joined
                         ? Colors.white.withOpacity(0.1)

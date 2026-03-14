@@ -52,15 +52,16 @@ class UsageStatsService {
   // QUERY USAGE STATS
   // ------------------------------------------------------------
 
-  /// Get usage for last 24 hours (Rolling Window)
-  Future<List<ActivityLogModel>> getLast24HoursUsage() async {
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(hours: 24));
+  /// Get usage for last 24 hours (Rolling Window) or since a specific start time
+  Future<List<ActivityLogModel>> getLast24HoursUsage(String uid,
+      {DateTime? startTime, DateTime? endTime}) async {
+    final now = endTime ?? DateTime.now();
+    final start = startTime ?? DateTime(now.year, now.month, now.day);
 
     return queryUsageStats(
       startTime: start.millisecondsSinceEpoch,
       endTime: now.millisecondsSinceEpoch,
-      interval: INTERVAL_DAILY,
+      uid: uid,
     );
   }
 
@@ -68,7 +69,7 @@ class UsageStatsService {
   Future<List<ActivityLogModel>> queryUsageStats({
     required int startTime,
     required int endTime,
-    int interval = INTERVAL_DAILY,
+    required String uid,
   }) async {
     if (!_isAndroid) return [];
 
@@ -80,14 +81,15 @@ class UsageStatsService {
     try {
       final List<dynamic> result = await _channel.invokeMethod(
         'queryUsageStats',
-        {'startTime': startTime, 'endTime': endTime, 'interval': interval},
+        {'startTime': startTime, 'endTime': endTime},
       );
 
       return result
           .map(
             (json) => ActivityLogModel.fromUsageStats(
               Map<String, dynamic>.from(json),
-              'current_user', // Replace with auth UID later
+              uid,
+              timestamp: DateTime.fromMillisecondsSinceEpoch(endTime),
             ),
           )
           .toList();

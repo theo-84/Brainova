@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/repositories/badge_repository.dart';
-import '../../domain/badge_service.dart';
 import 'badge_card.dart';
 
 class AchievementsSection extends ConsumerWidget {
@@ -30,7 +29,7 @@ class AchievementsSection extends ConsumerWidget {
                         badges.where((b) => b.isUnlocked).length;
                     return Text(
                       '$unlockedCount / ${badges.length} Unlocked',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppTheme.primary,
                         fontWeight: FontWeight.bold,
@@ -39,19 +38,6 @@ class AchievementsSection extends ConsumerWidget {
                   },
                   loading: () => const SizedBox.shrink(),
                   error: (_, __) => const SizedBox.shrink(),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => ref.read(badgeServiceProvider).testUnlock(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                    ),
-                    child: const Text('🐛', style: TextStyle(fontSize: 16)),
-                  ),
                 ),
               ],
             ),

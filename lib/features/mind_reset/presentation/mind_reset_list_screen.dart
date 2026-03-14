@@ -31,9 +31,8 @@ class MindResetListScreen extends ConsumerWidget {
   }
 }
 
-final mindResetActivitiesProvider = FutureProvider<List<MindResetActivity>>((
-  ref,
-) {
+final mindResetActivitiesProvider =
+    FutureProvider<List<MindResetActivity>>((ref) {
   return ref.read(mindResetRepositoryProvider).getActivities();
 });
 
@@ -45,8 +44,14 @@ class _ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use Gradient based on type
-    final Gradient? gradient = _getGradientForType(activity.type);
+    final Gradient gradient =
+        activity.cardGradient ?? _getGradientForType(activity.type);
+
+    // Safely get first color for shadow
+    Color shadowColor = Colors.transparent;
+    if (gradient is LinearGradient && gradient.colors.isNotEmpty) {
+      shadowColor = gradient.colors.first;
+    }
 
     return GestureDetector(
       onTap: () => context.push('/mind-reset/${activity.id}', extra: activity),
@@ -57,7 +62,7 @@ class _ActivityCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: (gradient as LinearGradient).colors.first.withOpacity(0.3),
+              color: shadowColor.withOpacity(0.3),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -81,9 +86,23 @@ class _ActivityCard extends StatelessWidget {
                     size: 24,
                   ),
                 ),
-                Icon(
-                  LucideIcons.award,
-                  color: Colors.white.withOpacity(0.5),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(children: [
+                    const Icon(LucideIcons.zap, size: 12, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text('-${activity.pointsReward} Rot',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        )),
+                  ]),
                 ),
               ],
             ),
@@ -106,35 +125,35 @@ class _ActivityCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                _Tag(
-                  icon: LucideIcons.clock,
-                  text: '${(activity.durationSeconds / 60).round()} min',
-                ),
-                const SizedBox(width: 8),
-                _Tag(
-                  icon: LucideIcons.zap,
-                  text: '-${activity.pointsReward} Rot',
-                ),
-              ],
-            ),
+            Row(children: [
+              _Tag(
+                icon: LucideIcons.clock,
+                text: '${(activity.durationSeconds / 60).round()} min',
+              ),
+              const SizedBox(width: 8),
+              _Tag(
+                icon: _getIconForType(activity.type),
+                text: _getLabelForType(activity.type),
+              ),
+            ]),
           ],
         ),
       ),
     );
   }
 
-  Gradient? _getGradientForType(MindResetType type) {
+  Gradient _getGradientForType(MindResetType type) {
     switch (type) {
       case MindResetType.breathing:
-        return AppTheme.healingGradient; // Teal/Blue
+        return AppTheme.healingGradient;
       case MindResetType.audio:
-        return AppTheme.focusGradient; // Purple/Blue
+        return AppTheme.focusGradient;
       case MindResetType.stretch:
-        return AppTheme.energyGradient; // Orange/Red
+        return AppTheme.energyGradient;
       case MindResetType.journaling:
-        return AppTheme.primaryGradient; // Purple
+        return AppTheme.primaryGradient;
+      case MindResetType.meditation:
+        return AppTheme.primaryGradient;
     }
   }
 
@@ -148,6 +167,23 @@ class _ActivityCard extends StatelessWidget {
         return LucideIcons.activity;
       case MindResetType.journaling:
         return LucideIcons.pencil;
+      case MindResetType.meditation:
+        return LucideIcons.brain;
+    }
+  }
+
+  String _getLabelForType(MindResetType type) {
+    switch (type) {
+      case MindResetType.breathing:
+        return 'Breathing';
+      case MindResetType.audio:
+        return 'Audio';
+      case MindResetType.stretch:
+        return 'Stretch';
+      case MindResetType.journaling:
+        return 'Journaling';
+      case MindResetType.meditation:
+        return 'Meditation';
     }
   }
 }
@@ -166,20 +202,16 @@ class _Tag extends StatelessWidget {
         color: Colors.black.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        children: [
-          Icon(icon, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(
-            text,
+      child: Row(children: [
+        Icon(icon, size: 12, color: Colors.white),
+        const SizedBox(width: 4),
+        Text(text,
             style: const TextStyle(
               fontSize: 12,
               color: Colors.white,
               fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+            )),
+      ]),
     );
   }
 }

@@ -164,7 +164,7 @@ class _BadgeUnlockCelebrationState
                   // Action Button
                   ElevatedButton(
                     onPressed: () {
-                      ref.read(lastUnlockedBadgeProvider.notifier).state = null;
+                      ref.read(badgeServiceProvider).dismissCelebration();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,

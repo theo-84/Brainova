@@ -42,6 +42,10 @@ class ChallengeState {
   );
 }
 
+final activeChallengesProvider = StreamProvider<List<Challenge>>((ref) {
+  return ref.read(challengeRepositoryProvider).watchActiveChallenges();
+});
+
 final challengeControllerProvider = NotifierProvider.autoDispose
     .family<ChallengeController, ChallengeState, String>(
   ChallengeController.new,
@@ -51,8 +55,6 @@ class ChallengeController
     extends AutoDisposeFamilyNotifier<ChallengeState, String> {
   Timer? _ticker;
   StreamSubscription<int>? _participantsSub;
-
-  static const challengeDuration = Duration(hours: 24);
 
   @override
   ChallengeState build(String challengeId) {
@@ -117,8 +119,8 @@ class ChallengeController
     });
   }
 
-  Future<void> join() async {
-    print("DEBUG: Controller join() called");
+  Future<void> join(Duration duration) async {
+    print("DEBUG: Controller join() called with duration: $duration");
     if (state.loading || state.status.joined) return;
 
     state = state.copyWith(loading: true);
@@ -127,7 +129,7 @@ class ChallengeController
       final repo = ref.read(challengeRepositoryProvider);
       await repo.joinChallenge(
         challengeId: arg,
-        duration: challengeDuration,
+        duration: duration,
       );
       await _loadMyStatus();
     } catch (e) {

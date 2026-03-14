@@ -23,6 +23,10 @@ class BadgeService {
   List<BadgeModel> _allBadges = [];
   UserModel? _currentUser;
 
+  // Celebration Queue
+  final List<BadgeModel> _celebrationQueue = [];
+  bool _isShowingCelebration = false;
+
   BadgeService(this._ref);
 
   void _initialize() {
@@ -45,32 +49,6 @@ class BadgeService {
     });
   }
 
-  /// Forces a celebration for testing purposes
-  void testUnlock() {
-    print('DEBUG: BadgeService.testUnlock called');
-
-    BadgeModel badge;
-    if (_allBadges.isNotEmpty) {
-      badge = _allBadges.firstWhere((b) => b.id == 'streak_3',
-          orElse: () => _allBadges.first);
-    } else {
-      print('DEBUG: _allBadges is empty, using fallback badge');
-      badge = BadgeModel(
-        id: 'test_badge',
-        title: 'Super Star!',
-        description: 'You are doing amazing things!',
-        iconName: 'medal',
-        conditionType: BadgeConditionType.streak,
-        conditionValue: 1,
-        unitLabel: 'days',
-      );
-    }
-
-    print('DEBUG: Triggering celebration for badge: ${badge.title}');
-    _ref.read(lastUnlockedBadgeProvider.notifier).state =
-        badge.copyWith(isUnlocked: true, unlockedAt: DateTime.now());
-  }
-
   /// The main logic to check all locked badges against user stats
   void _checkConditions() {
     final user = _currentUser;
@@ -83,7 +61,8 @@ class BadgeService {
 
       switch (badge.conditionType) {
         case BadgeConditionType.streak:
-          met = user.currentStreak >= badge.conditionValue;
+          // Use longestStreak to ensure milestone is captured
+          met = user.longestStreak >= badge.conditionValue;
           break;
         case BadgeConditionType.firstLogin:
           // If the user exists and is logged in, they've met first login
@@ -93,16 +72,14 @@ class BadgeService {
           met = _isProfileComplete(user);
           break;
         case BadgeConditionType.consistency7Days:
-          met = user.longestStreak >= 7;
+          met = user.longestStreak >= badge.conditionValue;
           break;
         case BadgeConditionType.consistency30Days:
-          met = user.longestStreak >= 30;
+          met = user.longestStreak >= badge.conditionValue;
           break;
         case BadgeConditionType.tasksCompleted:
-          // Assuming we track tasks in points or a similar field for now
-          // or we might need a specific field in the future
-          met = user.points >=
-              (badge.conditionValue * 10); // Dummy logic: 10 points per task
+          // Use totalSessions instead of dummy points logic
+          met = user.totalSessions >= badge.conditionValue;
           break;
         case BadgeConditionType.dietLog:
           met = user.contentDietCount >= badge.conditionValue;
@@ -120,23 +97,42 @@ class BadgeService {
 
   bool _isProfileComplete(UserModel user) {
     return user.displayName != null &&
+        user.displayName!.isNotEmpty &&
         user.photoUrl != null &&
+        user.photoUrl!.isNotEmpty &&
         user.phoneNumber != null &&
-        user.country != null;
+        user.phoneNumber!.isNotEmpty &&
+        user.country != null &&
+        user.country!.isNotEmpty;
   }
 
   Future<void> _unlockBadge(BadgeModel badge) async {
     await _ref.read(badgeRepositoryProvider).unlockBadge(badge.id);
 
-    // Notify UI for celebration
-    _ref.read(lastUnlockedBadgeProvider.notifier).state =
+    final unlockedBadge =
         badge.copyWith(isUnlocked: true, unlockedAt: DateTime.now());
 
-    // Clear the notification after some time (optional, UI can handle clearing)
-    Future.delayed(const Duration(seconds: 5), () {
-      if (_ref.read(lastUnlockedBadgeProvider.notifier).state?.id == badge.id) {
-        _ref.read(lastUnlockedBadgeProvider.notifier).state = null;
-      }
+    // Add to celebration queue
+    _celebrationQueue.add(unlockedBadge);
+    _showNextCelebration();
+  }
+
+  void _showNextCelebration() {
+    if (_isShowingCelebration || _celebrationQueue.isEmpty) return;
+
+    _isShowingCelebration = true;
+    final nextBadge = _celebrationQueue.removeAt(0);
+    _ref.read(lastUnlockedBadgeProvider.notifier).state = nextBadge;
+  }
+
+  /// Called from the UI when the user dismisses the celebration
+  void dismissCelebration() {
+    _ref.read(lastUnlockedBadgeProvider.notifier).state = null;
+    _isShowingCelebration = false;
+
+    // Show next one after a brief delay for smooth transition
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _showNextCelebration();
     });
   }
 

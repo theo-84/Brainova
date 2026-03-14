@@ -45,6 +45,11 @@ class ChallengeRepository {
     });
   }
 
+  Stream<List<Challenge>> watchActiveChallenges() {
+    return firestore.collection('challenges').snapshots().map((snap) =>
+        snap.docs.map((doc) => Challenge.fromFirestore(doc)).toList());
+  }
+
   Future<ChallengeUserStatus> getMyStatus(String challengeId) async {
     print("DEBUG: Getting status for challenge: $challengeId");
     final uid = auth.currentUser?.uid;
@@ -86,7 +91,7 @@ class ChallengeRepository {
     required String challengeId,
     required Duration duration,
   }) async {
-    print("DEBUG: Joining challenge: $challengeId");
+    print("DEBUG: Joining challenge: $challengeId with duration: $duration");
     final cRef = challengeDoc(challengeId);
     final pRef = participantDoc(challengeId);
     final uid = _uid;

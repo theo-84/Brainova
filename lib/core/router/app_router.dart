@@ -4,6 +4,7 @@ import '../../features/auth/presentation/welcome_screen.dart';
 import '../../features/auth/presentation/intro_slogan_screen.dart';
 import '../../features/auth/presentation/brainova_start_screen.dart';
 import '../../features/auth/presentation/get_started_screen.dart';
+// import '../../features/auth/presentation/verify_email_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/mind_reset/presentation/mind_reset_list_screen.dart';
 import '../../features/mind_reset/presentation/activity_player_screen.dart';
@@ -12,6 +13,8 @@ import '../../features/rewire/presentation/rewire_screen.dart';
 import '../../features/content_diet/presentation/content_diet_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/personal_information_screen.dart';
+import '../../features/profile/presentation/help_support_screen.dart';
+import '../../features/profile/presentation/privacy_security_screen.dart';
 import '../../features/tracking/presentation/widgets/permission_screen.dart';
 import '../../features/admin/presentation/admin_dashboard_screen.dart';
 import '../../features/reality_check/presentation/reality_check_screen.dart';
@@ -54,6 +57,12 @@ final router = GoRouter(
       path: '/brainova-start',
       builder: (context, state) => const BrainovaStartScreen(),
     ),
+    /*
+    GoRoute(
+      path: '/verify-email',
+      builder: (context, state) => const VerifyEmailScreen(),
+    ),
+    */
 
     // Main app with bottom nav
     ShellRoute(
@@ -81,6 +90,14 @@ final router = GoRouter(
             GoRoute(
               path: 'personal-info',
               builder: (context, state) => const PersonalInformationScreen(),
+            ),
+            GoRoute(
+              path: 'privacy',
+              builder: (context, state) => const PrivacySecurityScreen(),
+            ),
+            GoRoute(
+              path: 'help',
+              builder: (context, state) => const HelpSupportScreen(),
             ),
           ],
         ),

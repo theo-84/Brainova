@@ -24,6 +24,8 @@ class ActivityRepository {
   Future<bool> checkRealDataAvailability() async {
     final hasPermission = await _usageStats.hasPermission();
     _useRealData = hasPermission;
+    debugPrint(
+        "DEBUG: ActivityRepository checkRealDataAvailability: hasPermission=$hasPermission");
     return hasPermission;
   }
 
@@ -48,24 +50,70 @@ class ActivityRepository {
   Future<List<ActivityLogModel>> getRecentActivities(
     String uid, {
     int limit = 50,
+    bool includeAuto = true,
   }) async {
     List<ActivityLogModel> allActivities = [];
 
-    // Fetch real Android usage stats
+    // 1. Fetch from Firestore
+    try {
+      final snapshot = await _firestore
+          .collection('activities')
+          .where('uid', isEqualTo: uid)
+          .orderBy('timestamp', descending: true)
+          .limit(limit)
+          .get();
+
+      final firestoreActivities = snapshot.docs
+          .map((doc) => ActivityLogModel.fromMap(doc.data(), doc.id))
+          .toList();
+      allActivities.addAll(firestoreActivities);
+    } catch (e) {
+      debugPrint("Firestore fetch error: $e");
+      // Fallback: Fetch without ordering if index is missing
+      try {
+        final snapshot = await _firestore
+            .collection('activities')
+            .where('uid', isEqualTo: uid)
+            .get();
+        final firestoreActivities = snapshot.docs
+            .map((doc) => ActivityLogModel.fromMap(doc.data(), doc.id))
+            .toList();
+        allActivities.addAll(firestoreActivities);
+      } catch (innerE) {
+        debugPrint("Firestore fallback fetch error: $innerE");
+      }
+    }
+
+    // 2. Fetch real Android usage stats
     if (_useRealData) {
       try {
-        final realActivities = await _getRealActivities(uid);
+        final now = DateTime.now();
+        final midnightToday = DateTime(now.year, now.month, now.day);
+        final realActivities =
+            await _getRealActivities(uid, midnightToday, now);
         allActivities.addAll(realActivities);
       } catch (e) {
         debugPrint("Real usage fetch error: $e");
       }
     }
 
-    // Add mock activities
+    // 3. Add local cache activities
     allActivities.addAll(_logs.where((log) => log.uid == uid));
+
+    // Remove duplicates by ID (in case Firestore and local overlap)
+    final Map<String, ActivityLogModel> uniqueMap = {};
+    for (var act in allActivities) {
+      uniqueMap[act.id] = act;
+    }
+    allActivities = uniqueMap.values.toList();
 
     // Sort newest first
     allActivities.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    if (!includeAuto) {
+      allActivities =
+          allActivities.where((act) => !act.id.startsWith('usage_')).toList();
+    }
 
     return allActivities.take(limit).toList();
   }
@@ -74,10 +122,16 @@ class ActivityRepository {
   // REAL USAGE DATA
   // ------------------------------------------------------------
 
-  Future<List<ActivityLogModel>> _getRealActivities(String uid) async {
-    final usageStats = await _usageStats.getLast24HoursUsage();
+  Future<List<ActivityLogModel>> _getRealActivities(
+      String uid, DateTime startTime, DateTime endTime) async {
+    final usageStats = await _usageStats.getLast24HoursUsage(uid,
+        startTime: startTime, endTime: endTime);
+    debugPrint(
+        "DEBUG: Fetched ${usageStats.length} real usage stats from Android");
 
     return usageStats.map((stats) {
+      debugPrint(
+          "DEBUG: Real Activity: ${stats.metadata?['packageName']} - ${stats.durationSeconds}s");
       return ActivityLogModel(
         id: stats.id,
         uid: uid,
@@ -86,6 +140,7 @@ class ActivityRepository {
         durationSeconds: stats.durationSeconds,
         impactScore: stats.impactScore,
         notes: stats.notes,
+        metadata: stats.metadata,
       );
     }).toList();
   }
@@ -94,21 +149,44 @@ class ActivityRepository {
   // BRAIN ROT CALCULATIONS
   // ------------------------------------------------------------
 
-  Future<int> getTodayBrainRotImpact(String uid) async {
-    final activities = await getRecentActivities(uid, limit: 100);
-
+  Future<Map<String, dynamic>> getDailyStats(String uid) async {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
 
-    int totalImpact = 0;
+    final activities = await getActivitiesInRange(uid, startOfDay, now);
+
+    int points = 0;
+    int resetSessions = 0;
+    int totalTasks = 0;
+    int screenTimeSeconds = 0;
 
     for (var activity in activities) {
-      if (activity.timestamp.isAfter(startOfDay)) {
-        totalImpact += activity.impactScore;
+      // Screen time from real usage (IDs starting with usage_)
+      if (activity.id.startsWith('usage_')) {
+        final packageName = activity.metadata?['packageName'] as String?;
+        if (packageName != null && !_isSystemApp(packageName)) {
+          screenTimeSeconds += activity.durationSeconds;
+        }
+      }
+
+      if (activity.type == ActivityType.mindReset ||
+          activity.type == ActivityType.rewire) {
+        // Points were stored as negative impact in logActivity
+        points += -activity.impactScore;
+        totalTasks++;
+        if (activity.type == ActivityType.mindReset) {
+          resetSessions++;
+        }
       }
     }
 
-    return totalImpact;
+    return {
+      'points': points,
+      'sessions': resetSessions, // For Profile Screen backwards compatibility
+      'resets': resetSessions,
+      'tasks': totalTasks,
+      'screenTimeSeconds': screenTimeSeconds,
+    };
   }
 
   Future<List<ActivityLogModel>> getActivitiesByType(
@@ -132,6 +210,8 @@ class ActivityRepository {
     DateTime start,
     DateTime end,
   ) async {
+    debugPrint(
+        "DEBUG: ActivityRepository getActivitiesInRange: uid=$uid, _useRealData=$_useRealData");
     List<ActivityLogModel> allActivities = [];
 
     // 1. Fetch from Firestore
@@ -146,7 +226,7 @@ class ActivityRepository {
           .map((doc) => ActivityLogModel.fromMap(doc.data(), doc.id))
           .where((activity) =>
               activity.timestamp.isAfter(start) &&
-              activity.timestamp.isBefore(end))
+              !activity.timestamp.isAfter(end))
           .toList();
 
       allActivities.addAll(filtered);
@@ -157,7 +237,7 @@ class ActivityRepository {
     // 2. Real usage (already limited to 24h from UsageStats)
     if (_useRealData) {
       try {
-        final realActivities = await _getRealActivities(uid);
+        final realActivities = await _getRealActivities(uid, start, end);
         allActivities.addAll(realActivities);
       } catch (e) {
         debugPrint("Real usage fetch error: $e");
@@ -169,8 +249,16 @@ class ActivityRepository {
 
     // Filter by time range (doubly sure)
     final filtered = allActivities.where((activity) {
-      return activity.timestamp.isAfter(start) &&
-          activity.timestamp.isBefore(end);
+      final isMatch =
+          activity.timestamp.isAfter(start) && !activity.timestamp.isAfter(end);
+
+      if (isMatch) {
+        final appName = activity.metadata?['packageName'] ?? 'Manual/Unknown';
+        debugPrint(
+            "DEBUG: Reality Check Data Source: $appName (${activity.type.name}) - ${activity.durationSeconds}s");
+      }
+
+      return isMatch;
     }).toList();
 
     // Sort newest first
@@ -194,7 +282,6 @@ class ActivityRepository {
       ActivityType.learning: 0,
       ActivityType.entertainment: 0,
       ActivityType.junk: 0,
-      ActivityType.news: 0,
       ActivityType.social: 0,
     };
 
@@ -251,6 +338,17 @@ class ActivityRepository {
   // ------------------------------------------------------------
   // TESTING HELPERS
   // ------------------------------------------------------------
+
+  bool _isSystemApp(String packageName) {
+    final p = packageName.toLowerCase();
+    return p.contains('launcher') ||
+        p.contains('systemui') ||
+        p == 'android' ||
+        p.contains('providers') ||
+        p.contains('settings') ||
+        p.contains('google.android.gms') ||
+        p.contains('brainova'); // Exclude our own app if desired
+  }
 
   void clearMockData() {
     _logs.clear();

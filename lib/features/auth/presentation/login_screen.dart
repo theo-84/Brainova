@@ -3,7 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../data/auth_repository.dart';
+import '../../../core/utils/input_validator.dart';
+import '../data/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -18,15 +19,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _handleLogin() async {
+    final emailError =
+        InputValidator.validateEmail(_emailController.text.trim());
+    if (emailError != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(emailError)));
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      await ref
-          .read(authRepositoryProvider)
-          .signIn(
+      await ref.read(authRepositoryProvider).signIn(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
           );
-      if (mounted) context.go('/home');
+      if (mounted) {
+        context.go('/home');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -60,7 +69,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 height: 80,
                 width: 80,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppTheme.surfaceHighlight,
                   shape: BoxShape.circle,
                 ),

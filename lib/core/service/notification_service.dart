@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -11,9 +12,9 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
-  Future<void> init() async {
+  Future<void> init({bool isBackground = false}) async {
     print(
-        'DEBUG: Initializing NotificationService for platform: $defaultTargetPlatform');
+        'DEBUG: Initializing NotificationService for platform: $defaultTargetPlatform (isBackground: $isBackground)');
     final isAndroid =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     final isDarwin = !kIsWeb &&
@@ -46,13 +47,28 @@ class NotificationService {
     await _notifications.initialize(settings);
     print('DEBUG: _notifications.initialize completed.');
 
-    final androidImplementation =
-        _notifications.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    if (!isBackground) {
+      final androidImplementation =
+          _notifications.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
 
-    if (androidImplementation != null) {
-      print('DEBUG: Requesting Android notification permissions...');
-      await androidImplementation.requestNotificationsPermission();
+      if (androidImplementation != null) {
+        print('DEBUG: Requesting Android notification permissions...');
+        await androidImplementation.requestNotificationsPermission();
+      }
+    }
+  }
+
+  Future<void> requestBatteryOptimizationExemption() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+
+    try {
+      final status = await Permission.ignoreBatteryOptimizations.status;
+      if (!status.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
+    } catch (e) {
+      debugPrint('Error requesting battery optimization exemption: $e');
     }
   }
 
@@ -63,8 +79,11 @@ class NotificationService {
     const androidDetails = AndroidNotificationDetails(
       'brainova_channel',
       'Brainova Alerts',
-      importance: Importance.high,
-      priority: Priority.high,
+      channelDescription: 'Notifications for your brain health and habits',
+      importance: Importance.max,
+      priority: Priority.max,
+      showWhen: true,
+      fullScreenIntent: true,
     );
 
     const darwinDetails = DarwinNotificationDetails(
@@ -79,14 +98,10 @@ class NotificationService {
       macOS: darwinDetails,
     );
 
-    print(
-        'DEBUG: Attempting to show notification: $title - $body (Platform: $defaultTargetPlatform)');
     try {
       if (defaultTargetPlatform != TargetPlatform.android &&
           defaultTargetPlatform != TargetPlatform.iOS &&
           defaultTargetPlatform != TargetPlatform.macOS) {
-        print(
-            'DEBUG: Skipping notification - Platform $defaultTargetPlatform not supported.');
         return;
       }
       await _notifications.show(
@@ -95,9 +110,8 @@ class NotificationService {
         body,
         details,
       );
-      print('DEBUG: Notification command sent to plugin successfully.');
     } catch (e) {
-      print('DEBUG: Error showing notification: $e');
+      debugPrint('Error showing notification: $e');
     }
   }
 }

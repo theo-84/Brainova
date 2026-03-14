@@ -5,7 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/content_diet_repository.dart';
 import '../data/content_diet_model.dart';
-import '../../auth/data/auth_repository.dart';
+import '../../auth/data/auth_providers.dart';
 import '../../reality_check/domain/reality_check_service.dart';
 import '../../tracking/data/activity_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -51,6 +51,7 @@ class _ContentDietScreenState extends ConsumerState<ContentDietScreen> {
       _notesController.clear();
       ref.invalidate(recentDietEntriesProvider);
       ref.invalidate(weeklyBreakdownProvider(user.uid));
+      ref.invalidate(realityCheckProvider(user.uid));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -238,8 +239,6 @@ class _ContentDietScreenState extends ConsumerState<ContentDietScreen> {
         return const Color(0xFF2196F3);
       case DietCategory.junk:
         return const Color(0xFFFF5252);
-      case DietCategory.news:
-        return const Color(0xFFFFD740);
       case DietCategory.social:
         return const Color(0xFF7C4DFF);
     }
@@ -253,8 +252,6 @@ class _ContentDietScreenState extends ConsumerState<ContentDietScreen> {
         return LucideIcons.tv;
       case DietCategory.junk:
         return LucideIcons.trash2;
-      case DietCategory.news:
-        return LucideIcons.newspaper;
       case DietCategory.social:
         return LucideIcons.share2;
     }
@@ -326,8 +323,6 @@ class _EntryCard extends StatelessWidget {
         return const Color(0xFF2196F3);
       case DietCategory.junk:
         return const Color(0xFFFF5252);
-      case DietCategory.news:
-        return const Color(0xFFFFD740);
       case DietCategory.social:
         return const Color(0xFF7C4DFF);
     }
@@ -341,8 +336,6 @@ class _EntryCard extends StatelessWidget {
         return LucideIcons.tv;
       case DietCategory.junk:
         return LucideIcons.trash2;
-      case DietCategory.news:
-        return LucideIcons.newspaper;
       case DietCategory.social:
         return LucideIcons.share2;
     }
@@ -429,11 +422,10 @@ class _WeeklySummaryCard extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <ActivityType>[
                 ActivityType.learning,
                 ActivityType.entertainment,
                 ActivityType.junk,
-                ActivityType.news,
                 ActivityType.social,
               ].map((type) {
                 final percentage = (data[type] ?? 0) * 100;
@@ -477,8 +469,6 @@ class _WeeklySummaryCard extends StatelessWidget {
         return "Entert.";
       case ActivityType.junk:
         return "Junk";
-      case ActivityType.news:
-        return "News";
       case ActivityType.social:
         return "Social";
       default:
@@ -494,8 +484,6 @@ class _WeeklySummaryCard extends StatelessWidget {
         return const Color(0xFF2196F3);
       case ActivityType.junk:
         return const Color(0xFFFF5252);
-      case ActivityType.news:
-        return const Color(0xFFFFD740);
       case ActivityType.social:
         return const Color(0xFF7C4DFF);
       default:
@@ -547,8 +535,6 @@ class PieChartPainter extends CustomPainter {
         return const Color(0xFF2196F3);
       case ActivityType.junk:
         return const Color(0xFFFF5252);
-      case ActivityType.news:
-        return const Color(0xFFFFD740);
       case ActivityType.social:
         return const Color(0xFF7C4DFF);
       default:

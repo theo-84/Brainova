@@ -6,7 +6,6 @@ enum ActivityType {
   neutral, // browsers, tools
   learning, // productive apps
   junk, // games, addictive apps
-  news, // news apps
   mindReset,
   rewire,
 }
@@ -36,7 +35,7 @@ class ActivityLogModel {
     return {
       'uid': uid,
       'type': type.name,
-      'timestamp': timestamp.toIso8601String(),
+      'timestamp': Timestamp.fromDate(timestamp),
       'durationSeconds': durationSeconds,
       'impactScore': impactScore,
       'notes': notes,
@@ -69,11 +68,11 @@ class ActivityLogModel {
   }
 
   // Parse from JSON (for usage stats)
-  static ActivityLogModel fromUsageStats(
-      Map<String, dynamic> json, String uid) {
+  static ActivityLogModel fromUsageStats(Map<String, dynamic> json, String uid,
+      {DateTime? timestamp}) {
     final packageName = json['packageName'] as String;
     final totalTimeInForeground = json['totalTimeInForeground'] as int;
-    final now = DateTime.now();
+    final now = timestamp ?? DateTime.now();
 
     // Determine activity type based on package name
     final activityType = _getActivityType(packageName);
@@ -98,49 +97,78 @@ class ActivityLogModel {
 
   // Determine activity type from package name
   static ActivityType _getActivityType(String packageName) {
-    if (packageName.contains('instagram') ||
-        packageName.contains('facebook') ||
-        packageName.contains('twitter') ||
-        packageName.contains('snapchat') ||
-        packageName.contains('tiktok') ||
-        packageName.contains('reddit')) {
-      return ActivityType.social; // Social media = scrolling (bad)
+    final pkg = packageName.toLowerCase();
+
+    if (pkg.contains('youtube') ||
+        pkg.contains('netflix') ||
+        pkg.contains('disney') ||
+        pkg.contains('primevideo') ||
+        pkg.contains('hulu') ||
+        pkg.contains('twitch')) {
+      return ActivityType.entertainment;
     }
 
-    if (packageName.contains('youtube') ||
-        packageName.contains('netflix') ||
-        packageName.contains('spotify') ||
-        packageName.contains('twitch')) {
-      return ActivityType.entertainment; // Entertainment
+    if (pkg.contains('instagram') ||
+        pkg.contains('facebook') ||
+        pkg.contains('twitter') ||
+        pkg.contains('x.android') ||
+        pkg.contains('tiktok') ||
+        pkg.contains('snapchat') ||
+        pkg.contains('reddit') ||
+        pkg.contains('telegram') ||
+        pkg.contains('whatsapp')) {
+      return ActivityType.social;
     }
 
-    if (packageName.contains('chrome') ||
-        packageName.contains('browser') ||
-        packageName.contains('firefox') ||
-        packageName.contains('edge') ||
-        packageName.contains('whatsapp')) {
-      return ActivityType.neutral; // neutral
+    if (pkg.contains('chrome') ||
+        pkg.contains('browser') ||
+        pkg.contains('firefox') ||
+        pkg.contains('edge') ||
+        pkg.contains('safari')) {
+      return ActivityType.neutral;
     }
 
-    if (packageName.contains('gmail') ||
-        packageName.contains('outlook') ||
-        packageName.contains('notes') ||
-        packageName.contains('docs') ||
-        packageName.contains('office') ||
-        packageName.contains('word') ||
-        packageName.contains('excel') ||
-        packageName.contains('blackboard')) {
-      return ActivityType.learning; // Productive apps = learning
+    if (pkg.contains('gmail') ||
+        pkg.contains('outlook') ||
+        pkg.contains('notion') ||
+        pkg.contains('trello') ||
+        pkg.contains('slack') ||
+        pkg.contains('asana') ||
+        pkg.contains('zoom') ||
+        pkg.contains('teams') ||
+        pkg.contains('classroom') ||
+        pkg.contains('notability') ||
+        pkg.contains('duolingo') ||
+        pkg.contains('anki') ||
+        pkg.contains('coursera') ||
+        pkg.contains('udemy') ||
+        pkg.contains('khanacademy') ||
+        pkg.contains('ted') ||
+        pkg.contains('medium') ||
+        pkg.contains('linkedin.learning') ||
+        pkg.contains('calculator') ||
+        pkg.contains('calendar')) {
+      return ActivityType.learning;
     }
 
-    if (packageName.contains('game') ||
-        packageName.contains('com.rovio') ||
-        packageName.contains('com.king') ||
-        packageName.contains('com.zynga')) {
-      return ActivityType.junk; // Games = junk (bad)
+    if (pkg.contains('game') ||
+        pkg.contains('pubg') ||
+        pkg.contains('freefire') ||
+        pkg.contains('roblox') ||
+        pkg.contains('unity') ||
+        pkg.contains('clash') ||
+        pkg.contains('candy') ||
+        pkg.contains('supercell') ||
+        pkg.contains('epicgames') ||
+        pkg.contains('ea.') ||
+        pkg.contains('gameloft') ||
+        pkg.contains('mojang') ||
+        pkg.contains('tencent') ||
+        pkg.contains('nintendo')) {
+      return ActivityType.junk;
     }
 
-    return ActivityType.neutral; // Default to neutral
+    return ActivityType.neutral;
   }
 
   // Get friendly app name from package name
@@ -159,9 +187,6 @@ class ActivityLogModel {
 
       case ActivityType.junk:
         return (minutes * 1.5).round();
-
-      case ActivityType.news:
-        return (minutes * 0.8).round();
 
       case ActivityType.entertainment:
         return (minutes * 1.0).round();

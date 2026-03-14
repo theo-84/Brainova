@@ -1,7 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/data/auth_repository.dart';
-import '../../auth/data/user_model.dart';
-import '../../auth/data/user_repository.dart';
+import '../../auth/data/auth_providers.dart';
 import 'streak_service.dart';
 
 final streakControllerProvider =

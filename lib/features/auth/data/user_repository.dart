@@ -37,6 +37,15 @@ class UserRepository {
     });
   }
 
+  Stream<UserModel?> watchUser(String uid) {
+    return _usersCollection.doc(uid).snapshots().map((doc) {
+      if (doc.exists && doc.data() != null) {
+        return UserModel.fromMap(doc.data()!, uid);
+      }
+      return null;
+    });
+  }
+
   Future<void> deleteUser(String uid) async {
     await _usersCollection.doc(uid).delete();
   }

@@ -93,7 +93,7 @@ class _IntroSloganScreenState extends State<IntroSloganScreen>
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/images/background2.png'),
+                image: AssetImage('assets/images/background3.png'),
                 fit: BoxFit.cover,
               ),
             ),

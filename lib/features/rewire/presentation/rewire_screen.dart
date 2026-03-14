@@ -47,7 +47,7 @@ class _RewireScreenState extends ConsumerState<RewireScreen> {
     });
   }
 
-  void _checkAnswer(RewireTask task) {
+  Future<void> _checkAnswer(RewireTask task) async {
     if (task.type == RewireType.trivia || task.type == RewireType.puzzle) {
       final isCorrect = _selectedOption == task.correctAnswer;
       setState(() {
@@ -55,11 +55,11 @@ class _RewireScreenState extends ConsumerState<RewireScreen> {
         _isCompleted = true;
       });
       if (isCorrect) {
-        ref.read(brainRotServiceProvider).completeRewire(
+        await ref.read(brainRotServiceProvider).completeRewire(
               task.title,
               points: task.pointsReward,
             );
-        _completedTaskIds.add(task.id);
+        if (mounted) _completedTaskIds.add(task.id);
       }
     } else {
       // PROMPT Type

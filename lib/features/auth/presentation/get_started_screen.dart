@@ -19,7 +19,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/images/background2.png'),
+                image: AssetImage('assets/images/background3.png'),
                 fit: BoxFit.cover,
               ),
             ),

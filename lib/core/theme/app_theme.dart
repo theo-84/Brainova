@@ -73,10 +73,8 @@ class AppTheme {
         primary: primary,
         secondary: pink,
         surface: lightSurface,
-        background: Color.fromARGB(255, 69, 62, 71),
         error: error,
         onSurface: lightTextPrimary,
-        onBackground: lightTextPrimary,
         onPrimary: Colors.white,
       ),
       textTheme:

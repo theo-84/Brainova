@@ -10,13 +10,21 @@ class UserModel {
   final List<String> badges;
   final DateTime createdAt;
   final DateTime lastLoginAt;
-  final int currentBrainRotLevel;
+  final int currentBrainRotScore;
   final int currentStreak;
   final int longestStreak;
   final DateTime? lastActiveDate;
   final int points;
+  final int dailyPoints;
+  final int totalSessions;
+  final int dailySessions;
   final int contentDietCount;
   final String role; // 'user' or 'admin'
+  final DateTime?
+      lastDailyResetDate; // tracks the last date daily counters were reset
+  final bool isRestricted;
+  final bool isEmailVerified;
+  final Map<String, double> dailyDiet; // Stores the % breakdown for today
 
   UserModel({
     required this.uid,
@@ -30,13 +38,20 @@ class UserModel {
     this.badges = const [],
     required this.createdAt,
     required this.lastLoginAt,
-    this.currentBrainRotLevel = 0,
+    this.currentBrainRotScore = 0,
     this.currentStreak = 0,
     this.longestStreak = 0,
     this.lastActiveDate,
     this.points = 0,
+    this.dailyPoints = 0,
+    this.totalSessions = 0,
+    this.dailySessions = 0,
     this.contentDietCount = 0,
     this.role = 'user',
+    this.isRestricted = false,
+    this.isEmailVerified = false,
+    this.lastDailyResetDate,
+    this.dailyDiet = const {},
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String uid) {
@@ -58,15 +73,27 @@ class UserModel {
       lastLoginAt: data['lastLoginAt'] != null
           ? DateTime.tryParse(data['lastLoginAt']) ?? DateTime.now()
           : DateTime.now(),
-      currentBrainRotLevel: data['currentBrainRotLevel'] ?? 0,
+      currentBrainRotScore:
+          data['currentBrainRotScore'] ?? data['currentBrainRotLevel'] ?? 0,
       currentStreak: data['currentStreak'] ?? data['streakDays'] ?? 0,
       longestStreak: data['longestStreak'] ?? 0,
       lastActiveDate: data['lastActiveDate'] != null
           ? DateTime.tryParse(data['lastActiveDate'])
           : null,
       points: data['points'] ?? 0,
+      dailyPoints: data['dailyPoints'] ?? 0,
+      totalSessions: data['totalSessions'] ?? 0,
+      dailySessions: data['dailySessions'] ?? 0,
       contentDietCount: data['contentDietCount'] ?? 0,
       role: data['role'] ?? 'user',
+      isRestricted: data['isRestricted'] ?? false,
+      isEmailVerified: data['isEmailVerified'] ?? false,
+      lastDailyResetDate: data['lastDailyResetDate'] != null
+          ? DateTime.tryParse(data['lastDailyResetDate'])
+          : null,
+      dailyDiet: data['dailyDiet'] != null
+          ? Map<String, double>.from(data['dailyDiet'])
+          : const {},
     );
   }
 
@@ -82,13 +109,20 @@ class UserModel {
       'badges': badges,
       'createdAt': createdAt.toIso8601String(),
       'lastLoginAt': lastLoginAt.toIso8601String(),
-      'currentBrainRotLevel': currentBrainRotLevel,
+      'currentBrainRotScore': currentBrainRotScore,
       'currentStreak': currentStreak,
       'longestStreak': longestStreak,
       'lastActiveDate': lastActiveDate?.toIso8601String(),
       'points': points,
+      'dailyPoints': dailyPoints,
+      'totalSessions': totalSessions,
+      'dailySessions': dailySessions,
       'contentDietCount': contentDietCount,
       'role': role,
+      'isRestricted': isRestricted,
+      'isEmailVerified': isEmailVerified,
+      'lastDailyResetDate': lastDailyResetDate?.toIso8601String(),
+      'dailyDiet': dailyDiet,
     };
   }
 
@@ -101,12 +135,19 @@ class UserModel {
     String? country,
     List<String>? badges,
     DateTime? lastLoginAt,
-    int? currentBrainRotLevel,
+    int? currentBrainRotScore,
     int? currentStreak,
     int? longestStreak,
     DateTime? lastActiveDate,
     int? points,
+    int? dailyPoints,
+    int? totalSessions,
+    int? dailySessions,
     int? contentDietCount,
+    bool? isRestricted,
+    bool? isEmailVerified,
+    DateTime? lastDailyResetDate,
+    Map<String, double>? dailyDiet,
   }) {
     return UserModel(
       uid: uid,
@@ -120,13 +161,20 @@ class UserModel {
       badges: badges ?? this.badges,
       createdAt: createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
-      currentBrainRotLevel: currentBrainRotLevel ?? this.currentBrainRotLevel,
+      currentBrainRotScore: currentBrainRotScore ?? this.currentBrainRotScore,
       currentStreak: currentStreak ?? this.currentStreak,
       longestStreak: longestStreak ?? this.longestStreak,
       lastActiveDate: lastActiveDate ?? this.lastActiveDate,
       points: points ?? this.points,
+      dailyPoints: dailyPoints ?? this.dailyPoints,
+      totalSessions: totalSessions ?? this.totalSessions,
+      dailySessions: dailySessions ?? this.dailySessions,
       contentDietCount: contentDietCount ?? this.contentDietCount,
       role: role,
+      isRestricted: isRestricted ?? this.isRestricted,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+      lastDailyResetDate: lastDailyResetDate ?? this.lastDailyResetDate,
+      dailyDiet: dailyDiet ?? this.dailyDiet,
     );
   }
 }

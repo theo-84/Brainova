@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
 import 'mind_reset_model.dart';
 
 final mindResetRepositoryProvider = Provider<MindResetRepository>((ref) {
@@ -6,140 +8,132 @@ final mindResetRepositoryProvider = Provider<MindResetRepository>((ref) {
 });
 
 class MindResetRepository {
-  // Static MVP Data
   final List<MindResetActivity> _activities = [
     MindResetActivity(
       id: '1',
       title: 'Box Breathing',
-      description: 'Inhale for 4s, hold for 4s, exhale for 4s, hold for 4s.',
+      description:
+          'A powerful breathing technique used to quickly calm the mind and reset your nervous system.',
       type: MindResetType.breathing,
-      durationSeconds: 180, // 3 mins
-      assetPath: 'assets/breathing.png',
+      durationSeconds: 300,
+      assetPath: 'assets/lottie/box_breathing.json',
+      pointsReward: 15,
+      cardGradient: AppTheme.healingGradient,
       steps: [
         'Inhale through your nose for 4 seconds.',
         'Hold your breath for 4 seconds.',
-        'Exhale through your mouth for 4 seconds.',
-        'Hold your breath for 4 seconds.',
-        'Repeat the cycle.',
+        'Exhale slowly for 4 seconds.',
+        'Hold empty for 4 seconds. Repeat.',
       ],
     ),
     MindResetActivity(
       id: '2',
-      title: 'Rain Sounds',
-      description: 'Listen to the calming sound of rain to clear your mind.',
-      type: MindResetType.audio,
-      durationSeconds: 300, // 5 mins
-      assetPath: 'assets/rain.mp3',
+      title: 'Neck & Shoulder Reset',
+      description:
+          'Release tension in your neck and shoulders after long periods of screen time.',
+      type: MindResetType.stretch,
+      durationSeconds: 300,
+      assetPath: 'assets/neck_stretch.json',
+      pointsReward: 15,
+      cardGradient: AppTheme.energyGradient,
       steps: [
-        'Find a comfortable seated or lying position.',
-        'Close your eyes and take a deep breath.',
-        'Focus gently on the sound of the rain.',
-        'Let go of any distracting thoughts.',
+        'Sit up straight, shoulders relaxed.',
+        'Drop right ear to right shoulder. Hold 10s.',
+        'Roll head forward to chest. Hold 10s.',
+        'Drop left ear to left shoulder. Hold 10s.',
+        'Roll both shoulders backward 5 times.',
+        'Stretch arms above your head.',
       ],
     ),
     MindResetActivity(
       id: '3',
-      title: 'Neck Stretch',
-      description: 'Simple neck rotations to release tension from scrolling.',
-      type: MindResetType.stretch,
-      durationSeconds: 120, // 2 mins
-      assetPath: 'assets/stretch.png',
+      title: 'Rain Sounds',
+      description: 'Let the sound of rain wash away mental noise.',
+      type: MindResetType.audio,
+      durationSeconds: 300,
+      assetPath: 'assets/audio/rain3.mp3',
+      pointsReward: 15,
+      cardGradient: const LinearGradient(
+        colors: [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
       steps: [
-        'Sit up straight with your shoulders relaxed.',
-        'Slowly tilt your head to the right shoulder.',
-        'Hold for 5 seconds.',
-        'Slowly tilt to the left shoulder.',
-        'Gently rotate your head in a circle.',
+        'Put on headphones.',
+        'Close your eyes or soften your gaze.',
+        'Let the sound fill your attention completely.',
+        'Whenever your mind drifts, come back to the sound of the rain.'
       ],
     ),
     MindResetActivity(
       id: '4',
-      title: 'Digital Detox',
-      description: 'Put your phone down and look out a window.',
-      type: MindResetType.breathing,
+      title: 'Eye Workout',
+      description:
+          'Refresh tired eyes and reduce strain after long sessions of screen use.',
+      type: MindResetType.stretch,
       durationSeconds: 300,
-      assetPath: 'assets/breathing.png',
+      assetPath: 'assets/images/eye_rest.png',
+      pointsReward: 15,
+      cardGradient: const LinearGradient(
+        colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       steps: [
-        'Place your phone face down or away from you.',
-        'Look at a distant object (at least 20ft away).',
-        'Soften your gaze and blink naturally.',
-        'Breathe deeply and simply observe.',
+        'Look up and hold 3s, look down and hold 3s. Repeat 3 times.',
+        'Look right and hold 3s, look left and hold 3s. Repeat 3 times.',
+        'Look top-left 3s, look top-right 3s. Repeat 3 times.',
+        'Rotate eyeballs 3 times right, then 3 times left. Blink to relax.',
+        'Close eyes tight and hold for 10 seconds. Relax.',
+        'Open eyes wide and hold 10 seconds. Blink repeatedly to finish.',
       ],
     ),
     MindResetActivity(
       id: '5',
-      title: 'Lo-Fi Beats',
-      description: 'Chill beats to study or relax to.',
-      type: MindResetType.audio,
-      durationSeconds: 600,
-      assetPath: 'assets/audio.png',
+      title: 'Brain Dump',
+      description:
+          'Unload your thoughts onto paper to clear your mind and regain focus.',
+      type: MindResetType.journaling,
+      durationSeconds: 300,
+      assetPath: 'assets/images/journal.png',
+      pointsReward: 15,
+      cardGradient: const LinearGradient(
+        colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       steps: [
-        'Put on your headphones.',
-        'Set the volume to a comfortable level.',
-        'Start your work or close your eyes to relax.',
-        'Let the rhythm guide your focus.',
+        'Open a notes app or grab paper.',
+        'Write every thought, worry, or task.',
+        'Do not filter or judge just write.',
+        'Cross out things you cannot control.',
+        'Circle the one thing that matters most.',
       ],
     ),
     MindResetActivity(
       id: '6',
-      title: 'Deep Focus',
-      description: 'Binaural beats for concentration.',
-      type: MindResetType.audio,
-      durationSeconds: 900,
-      assetPath: 'assets/audio.png',
-      steps: [
-        'Headphones are required for best effect.',
-        'Close your eyes or focus on your task.',
-        'Allow the frequencies to sync your brainwaves.',
-      ],
-    ),
-    MindResetActivity(
-      id: '7',
-      title: 'Eye Rest',
-      description: 'Close your eyes and cover them with your palms.',
-      type: MindResetType.stretch,
-      durationSeconds: 60,
-      assetPath: 'assets/stretch.png',
-      steps: [
-        'Rub your palms together until warm.',
-        'Gently cup your palms over your closed eyes.',
-        'Do not press on your eyeballs.',
-        'Visualize total blackness and relax.',
-      ],
-    ),
-    MindResetActivity(
-      id: '8',
-      title: 'Wrist Relief',
-      description: 'Stretches for carpal tunnel prevention.',
-      type: MindResetType.stretch,
-      durationSeconds: 120,
-      assetPath: 'assets/stretch.png',
-      steps: [
-        'Extend your arm with palm facing up.',
-        'Gently pull your fingers back with the other hand.',
-        'Hold for 10 seconds.',
-        'Repeat with palm facing down.',
-        'Switch hands and repeat.',
-      ],
-    ),
-    MindResetActivity(
-      id: '9',
-      title: 'Brain Dump',
-      description: 'Write down everything on your mind to clear space.',
-      type: MindResetType.journaling,
+      title: 'Digital Detox',
+      description: 'Put your phone down and reconnect with reality.',
+      type: MindResetType.meditation,
       durationSeconds: 300,
-      assetPath: 'assets/journal.png',
+      assetPath: 'assets/lottie/digital_detox.json',
+      pointsReward: 15,
+      cardGradient: const LinearGradient(
+        colors: [Color(0xFF1a1a2e), Color(0xFF2d1b69)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
       steps: [
-        'Grab a piece of paper or open a note app.',
-        'Write down every worry, task, or thought.',
-        'Do not judge or organize, just write.',
-        'Once written, feel the weight lift off your mind.',
+        'Put your phone face down and step away from the screen.',
+        'Take a slow deep breath and relax your body.',
+        'Look around and notice your surroundings.',
+        'Focus on the present moment instead of your device.',
+        'Enjoy a short break from digital stimulation.',
       ],
     ),
   ];
 
   Future<List<MindResetActivity>> getActivities() async {
-    // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 300));
     return _activities;
   }

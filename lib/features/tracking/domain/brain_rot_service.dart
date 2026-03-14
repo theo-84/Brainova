@@ -1,102 +1,151 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/data/auth_repository.dart';
+import '../../auth/data/auth_providers.dart';
 import '../data/activity_repository.dart';
 import '../data/activity_model.dart';
+import '../../../core/service/smart_notification_service.dart';
 
 final brainRotServiceProvider = Provider<BrainRotService>((ref) {
   return BrainRotService(
     ref.read(activityRepositoryProvider),
     ref.read(authRepositoryProvider),
+    ref.read(userRepositoryProvider),
+    ref.read(smartNotificationServiceProvider),
   );
-});
-
-final brainRotLevelProvider = FutureProvider<int>((ref) async {
-  final auth = ref.watch(authRepositoryProvider);
-  final user = auth.currentUser;
-  if (user == null) return 0;
-
-  final service = ref.read(brainRotServiceProvider);
-  return await service.calculateRollingScore(user.uid);
 });
 
 class BrainRotService {
   final ActivityRepository _activityRepo;
   final AuthRepository _authRepo;
+  final UserRepository _userRepo;
+  final SmartNotificationService _notificationService;
 
-  BrainRotService(this._activityRepo, this._authRepo);
+  static int? _lastScore;
+
+  BrainRotService(this._activityRepo, this._authRepo, this._userRepo,
+      this._notificationService);
 
   // ===== WEIGHTS =====
   static const double socialWeight = 2.0;
   static const double entertainmentWeight = 1.5;
   static const double neutralWeight = 1.0;
-  static const double learningWeight = 0.3;
-  static const double newsWeight = 0.8;
+  static const double learningWeight =
+      -0.5; // Changed to negative to reduce rot
 
   static const double normalizationConstant = 600.0;
 
-  // ===== ROLLING 24H SCORE =====
+  // ===== TODAY'S SCORE (midnight → now) =====
   Future<int> calculateRollingScore(String uid) async {
     final now = DateTime.now();
-    final start = now.subtract(const Duration(hours: 24));
+    final start = DateTime(now.year, now.month, now.day); // midnight today
 
     final activities =
         await _activityRepo.getActivitiesInRange(uid, start, now);
 
-    double rawImpact = 0;
+    debugPrint(
+        "DEBUG: BrainRotService: Found ${activities.length} activities for calculation");
+
+    double positiveImpact = 0;
+    double negativeImpact = 0;
 
     for (final activity in activities) {
+      final pkg = activity.metadata?['packageName'] as String?;
+      if (pkg == 'com.example.brainova' ||
+          pkg == 'com.sec.android.app.launcher' ||
+          pkg == 'com.google.android.apps.nexuslauncher' ||
+          pkg == 'com.android.systemui') {
+        continue;
+      }
+
       final minutes = activity.durationSeconds / 60;
+      double impact = 0;
 
       switch (activity.type) {
         case ActivityType.social:
-          rawImpact += minutes * socialWeight;
+          impact = minutes * socialWeight;
           break;
-
         case ActivityType.entertainment:
-          rawImpact += minutes * entertainmentWeight;
+          impact = minutes * entertainmentWeight;
           break;
-
         case ActivityType.neutral:
-          rawImpact += minutes * neutralWeight;
+          impact = minutes * neutralWeight;
           break;
-
         case ActivityType.learning:
-          rawImpact += minutes * learningWeight;
+          impact = minutes * learningWeight;
           break;
-
-        case ActivityType.news:
-          rawImpact += minutes * newsWeight;
-          break;
-
         case ActivityType.mindReset:
-          rawImpact -= 20; // strong recovery
+          impact = -20;
           break;
-
         case ActivityType.rewire:
-          rawImpact -= 10; // moderate recovery
+          impact = -10;
           break;
-
         case ActivityType.junk:
-          rawImpact += minutes * 2.2; // strongest negative
+          impact = minutes * 2.2;
           break;
+      }
+
+      if (impact > 0) {
+        positiveImpact += impact;
+      } else {
+        negativeImpact += impact;
       }
     }
 
-    double score = (rawImpact / normalizationConstant) * 100;
+    double rawImpact = positiveImpact + negativeImpact;
+    double scoreValue = (rawImpact / normalizationConstant) * 100;
 
-    if (score < 0) score = 0;
-    if (score > 100) score = 100;
+    debugPrint("DEBUG: BrainRot Calculation Breakdown:");
+    debugPrint("  - Positive (Usage): +${positiveImpact.toStringAsFixed(2)}");
+    debugPrint(
+        "  - Negative (Recovery/Learning): ${negativeImpact.toStringAsFixed(2)}");
+    debugPrint("  - Net Raw Impact: ${rawImpact.toStringAsFixed(2)}");
+    debugPrint("  - Score Before Clamp: ${scoreValue.toStringAsFixed(2)}%");
 
-    return score.round();
+    if (scoreValue < 0) scoreValue = 0;
+    if (scoreValue > 100) scoreValue = 100;
+
+    final currentScore = scoreValue.round();
+
+    // Sync daily data to Firestore for Admin Analytics
+    final user = await _userRepo.getUser(uid);
+    if (user != null) {
+      final breakdown = await getCategoryBreakdown(uid, activities: activities);
+      await _userRepo.updateUser(user.copyWith(
+        currentBrainRotScore: currentScore,
+        dailyDiet: breakdown,
+      ));
+    }
+
+    // Trigger notifications based on score changes
+    if (_lastScore != null) {
+      if (currentScore > _lastScore! && currentScore >= 60) {
+        await _notificationService.sendBrainRotWarning(currentScore);
+      } else if (currentScore < _lastScore!) {
+        await _notificationService.sendPositiveReinforcement(
+            _lastScore!, currentScore);
+      }
+    } else if (currentScore >= 60) {
+      // First time check and score is high
+      await _notificationService.sendBrainRotWarning(currentScore);
+    }
+
+    _lastScore = currentScore;
+    return currentScore;
   }
 
-  // ===== CATEGORY BREAKDOWN =====
-  Future<Map<String, double>> getCategoryBreakdown(String uid) async {
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(hours: 24));
+  // ===== TODAY'S CATEGORY BREAKDOWN (midnight → now) =====
+  Future<Map<String, double>> getCategoryBreakdown(String uid,
+      {List<ActivityLogModel>? activities}) async {
+    final List<ActivityLogModel> finalActivities;
 
-    final activities =
-        await _activityRepo.getActivitiesInRange(uid, start, now);
+    if (activities != null) {
+      finalActivities = activities;
+    } else {
+      final now = DateTime.now();
+      final start = DateTime(now.year, now.month, now.day); // midnight today
+      finalActivities =
+          await _activityRepo.getActivitiesInRange(uid, start, now);
+    }
 
     double totalMinutes = 0;
     double social = 0;
@@ -104,9 +153,8 @@ class BrainRotService {
     double neutral = 0;
     double learning = 0;
     double junk = 0;
-    double news = 0;
 
-    for (final activity in activities) {
+    for (final activity in finalActivities) {
       final minutes = activity.durationSeconds / 60;
       totalMinutes += minutes;
 
@@ -131,10 +179,6 @@ class BrainRotService {
           junk += minutes;
           break;
 
-        case ActivityType.news:
-          news += minutes;
-          break;
-
         default:
           break;
       }
@@ -147,7 +191,6 @@ class BrainRotService {
         'neutral': 0,
         'learning': 0,
         'junk': 0,
-        'news': 0,
       };
     }
 
@@ -159,38 +202,59 @@ class BrainRotService {
       'neutral': round((neutral / totalMinutes) * 100),
       'learning': round((learning / totalMinutes) * 100),
       'junk': round((junk / totalMinutes) * 100),
-      'news': round((news / totalMinutes) * 100),
     };
   }
 
   // ===== COMPLETE REWIRE =====
   Future<void> completeRewire(String taskTitle, {int points = 10}) async {
-    final user = _authRepo.currentUser;
-    if (user == null) return;
+    final userAuth = _authRepo.currentUser;
+    if (userAuth == null) return;
 
-    // Log through repository (handles both local and Firestore activities collection)
+    // Log through repository
     await _activityRepo.logActivity(
-      uid: user.uid,
+      uid: userAuth.uid,
       type: ActivityType.rewire,
       durationSeconds: 60,
-      impactScore: -points, // Negative for recovery
+      impactScore: -points,
       notes: taskTitle,
     );
+
+    // Update User Stats
+    final user = await _userRepo.getUser(userAuth.uid);
+    if (user != null) {
+      await _userRepo.updateUser(user.copyWith(
+        points: user.points + points,
+        dailyPoints: user.dailyPoints + points,
+        totalSessions: user.totalSessions + 1,
+        dailySessions: user.dailySessions + 1,
+      ));
+    }
   }
 
   // ===== COMPLETE MIND RESET =====
   Future<void> completeMindReset(String activityTitle,
       {int points = 20, int durationSeconds = 60}) async {
-    final user = _authRepo.currentUser;
-    if (user == null) return;
+    final userAuth = _authRepo.currentUser;
+    if (userAuth == null) return;
 
-    // Log through repository (handles both local and Firestore activities collection)
+    // Log through repository
     await _activityRepo.logActivity(
-      uid: user.uid,
+      uid: userAuth.uid,
       type: ActivityType.mindReset,
       durationSeconds: durationSeconds,
-      impactScore: -points, // Negative for recovery
+      impactScore: -points,
       notes: activityTitle,
     );
+
+    // Update User Stats
+    final user = await _userRepo.getUser(userAuth.uid);
+    if (user != null) {
+      await _userRepo.updateUser(user.copyWith(
+        points: user.points + points,
+        dailyPoints: user.dailyPoints + points,
+        totalSessions: user.totalSessions + 1,
+        dailySessions: user.dailySessions + 1,
+      ));
+    }
   }
 }

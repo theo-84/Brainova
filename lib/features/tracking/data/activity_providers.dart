@@ -1,32 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'activity_repository.dart';
 import 'activity_model.dart';
+import '../../auth/data/auth_providers.dart';
 import '../domain/brain_rot_service.dart';
 
 // ---------------------------
-// Last 24h Activities
+// Brain Rot Score (Rolling 24h)
 // ---------------------------
 
-final last24hActivitiesProvider =
-    FutureProvider<List<ActivityLogModel>>((ref) async {
-  final repo = ref.read(activityRepositoryProvider);
-  final uid = 'current_user';
+final brainRotScoreProvider = FutureProvider<int>((ref) async {
+  final auth = ref.watch(authRepositoryProvider);
+  final user = auth.currentUser;
+  if (user == null) return 0;
+  final uid = user.uid;
 
-  final now = DateTime.now();
-  final start = now.subtract(const Duration(hours: 24));
-
-  return repo.getActivitiesInRange(uid, start, now);
-});
-
-// ---------------------------
-// Brain Rot Level (Rolling 24h)
-// ---------------------------
-
-final brainRotLevelProvider =
-    FutureProvider<int>((ref) async {
   final service = ref.read(brainRotServiceProvider);
-  final uid = 'current_user';
-
   return service.calculateRollingScore(uid);
 });
 
@@ -36,9 +24,12 @@ final brainRotLevelProvider =
 
 final socialActivitiesProvider =
     FutureProvider<List<ActivityLogModel>>((ref) async {
-  final repo = ref.read(activityRepositoryProvider);
-  final uid = 'current_user';
+  final auth = ref.watch(authRepositoryProvider);
+  final user = auth.currentUser;
+  if (user == null) return [];
+  final uid = user.uid;
 
+  final repo = ref.read(activityRepositoryProvider);
   return repo.getActivitiesByType(uid, ActivityType.social);
 });
 
@@ -48,9 +39,12 @@ final socialActivitiesProvider =
 
 final learningActivitiesProvider =
     FutureProvider<List<ActivityLogModel>>((ref) async {
-  final repo = ref.read(activityRepositoryProvider);
-  final uid = 'current_user';
+  final auth = ref.watch(authRepositoryProvider);
+  final user = auth.currentUser;
+  if (user == null) return [];
+  final uid = user.uid;
 
+  final repo = ref.read(activityRepositoryProvider);
   return repo.getActivitiesByType(uid, ActivityType.learning);
 });
 
@@ -58,8 +52,7 @@ final learningActivitiesProvider =
 // Real Data Permission
 // ---------------------------
 
-final realDataAvailableProvider =
-    FutureProvider<bool>((ref) async {
+final realDataAvailableProvider = FutureProvider<bool>((ref) async {
   final repo = ref.read(activityRepositoryProvider);
   return repo.checkRealDataAvailability();
 });

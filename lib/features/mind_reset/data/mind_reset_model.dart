@@ -1,4 +1,6 @@
-enum MindResetType { breathing, audio, stretch, journaling }
+import 'package:flutter/material.dart';
+
+enum MindResetType { breathing, audio, stretch, journaling, meditation }
 
 class MindResetActivity {
   final String id;
@@ -6,9 +8,11 @@ class MindResetActivity {
   final String description;
   final MindResetType type;
   final int durationSeconds;
-  final String assetPath; // Could be image or audio path
+  final String assetPath;
   final int pointsReward;
   final List<String> steps;
+  final String? audioUrl;
+  final Gradient? cardGradient;
 
   MindResetActivity({
     required this.id,
@@ -19,5 +23,7 @@ class MindResetActivity {
     required this.assetPath,
     this.pointsReward = 15,
     this.steps = const [],
+    this.audioUrl,
+    this.cardGradient,
   });
 }

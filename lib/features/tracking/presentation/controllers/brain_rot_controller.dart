@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../auth/data/auth_repository.dart';
-import '../../../auth/data/user_repository.dart';
+import '../../../auth/data/auth_providers.dart';
 import '../../data/activity_model.dart';
 import '../../data/activity_repository.dart';
 
@@ -15,7 +14,7 @@ final brainRotControllerProvider =
     authState.value?.uid,
     userRepo,
     activityRepo,
-    initialLevel: authState.value?.currentBrainRotLevel ?? 0,
+    initialScore: authState.value?.currentBrainRotScore ?? 0,
   );
 });
 
@@ -29,8 +28,8 @@ class BrainRotController extends StateNotifier<int> {
     this._uid,
     this._userRepo,
     this._activityRepo, {
-    int initialLevel = 0,
-  }) : super(initialLevel) {
+    int initialScore = 0,
+  }) : super(initialScore) {
     if (_uid != null) {
       _startTracking();
     }
@@ -49,9 +48,9 @@ class BrainRotController extends StateNotifier<int> {
     // This is a simplified logic. In a real app, we'd detect foreground app or activity type.
     // For now, let's assume "Idle/Undefined" activity increases it slowly.
 
-    final newLevel = (state + 1).clamp(0, 100);
-    if (newLevel != state) {
-      state = newLevel;
+    final newScore = (state + 1).clamp(0, 100);
+    if (newScore != state) {
+      state = newScore;
       _syncToFirestore();
 
       if (state >= 90) {
@@ -75,9 +74,9 @@ class BrainRotController extends StateNotifier<int> {
 
     await _activityRepo.addActivity(activity);
 
-    final newLevel = (state + impact).clamp(0, 100);
-    if (newLevel != state) {
-      state = newLevel;
+    final newScore = (state + impact).clamp(0, 100);
+    if (newScore != state) {
+      state = newScore;
       await _syncToFirestore();
     }
   }
@@ -86,7 +85,7 @@ class BrainRotController extends StateNotifier<int> {
     if (_uid == null) return;
     final user = await _userRepo.getUser(_uid);
     if (user != null) {
-      await _userRepo.updateUser(user.copyWith(currentBrainRotLevel: state));
+      await _userRepo.updateUser(user.copyWith(currentBrainRotScore: state));
     }
   }
 

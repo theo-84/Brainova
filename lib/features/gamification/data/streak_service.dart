@@ -74,9 +74,14 @@ class StreakService {
     final lastActiveDate = _normalizeDate(lastActiveValue);
 
     // If last active was before yesterday, the streak is broken
-    if (lastActiveDate.isBefore(yesterday)) {
+    bool resetStreak = lastActiveDate.isBefore(yesterday);
+    bool resetDailyStats = lastActiveDate.isBefore(today);
+
+    if (resetStreak || resetDailyStats) {
       await _userRepo.updateUser(user.copyWith(
-        currentStreak: 0,
+        currentStreak: resetStreak ? 0 : user.currentStreak,
+        dailyPoints: resetDailyStats ? 0 : user.dailyPoints,
+        dailySessions: resetDailyStats ? 0 : user.dailySessions,
       ));
     }
   }

@@ -5,7 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/reality_check_service.dart';
 import '../domain/reality_check_result.dart';
-import '../../auth/data/auth_repository.dart';
+import '../../auth/data/auth_providers.dart';
 
 class RealityCheckScreen extends ConsumerStatefulWidget {
   const RealityCheckScreen({super.key});
@@ -27,35 +27,42 @@ class _RealityCheckScreenState extends ConsumerState<RealityCheckScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Reality Check")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // AI Reality Analysis Card (New ScoreCard)
-            realityCheckAsync.when(
-              data: (result) => Column(
-                children: [
-                  _ScoreCard(result).animate().fadeIn().slideY(begin: 0.1),
-                  const SizedBox(height: 24),
-                  _CategoryBreakdownCard(result.categoryPercentages)
-                      .animate()
-                      .fadeIn(delay: 200.ms)
-                      .slideY(begin: 0.1),
-                  if (result.shouldSuggestReset) ...[
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(realityCheckProvider(uid));
+          return ref.read(realityCheckProvider(uid).future);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // AI Reality Analysis Card (New ScoreCard)
+              realityCheckAsync.when(
+                data: (result) => Column(
+                  children: [
+                    _ScoreCard(result).animate().fadeIn().slideY(begin: 0.1),
                     const SizedBox(height: 24),
-                    _SuggestedActionCard()
+                    _CategoryBreakdownCard(result.categoryPercentages)
                         .animate()
-                        .fadeIn(delay: 400.ms)
-                        .scale(begin: const Offset(0.9, 0.9)),
+                        .fadeIn(delay: 200.ms)
+                        .slideY(begin: 0.1),
+                    if (result.shouldSuggestReset) ...[
+                      const SizedBox(height: 24),
+                      _SuggestedActionCard()
+                          .animate()
+                          .fadeIn(delay: 400.ms)
+                          .scale(begin: const Offset(0.9, 0.9)),
+                    ],
                   ],
-                ],
+                ),
+                loading: () => const _LoadingPlaceholder(height: 300),
+                error: (e, _) => Text("Error: $e"),
               ),
-              loading: () => const _LoadingPlaceholder(height: 300),
-              error: (e, _) => Text("Error: $e"),
-            ),
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
@@ -190,8 +197,6 @@ class _CategoryBreakdownCard extends StatelessWidget {
         return const Color(0xFF2196F3);
       case 'junk':
         return const Color(0xFFFF5252);
-      case 'news':
-        return const Color(0xFFFFD740);
       case 'social':
         return const Color(0xFF7C4DFF);
       default:

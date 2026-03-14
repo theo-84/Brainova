@@ -26,6 +26,10 @@ dependencies:
   shared_preferences: ^2.5.4
   flutter_local_notifications: ^17.1.2
   permission_handler: ^11.3.1
+  flutter_background_service: ^5.0.10
+  firebase_app_check: ^0.4.1+5
+  lottie: ^3.1.2
+  just_audio: ^0.9.42
 
 dev_dependencies:
   flutter_test:
@@ -33,11 +37,23 @@ dev_dependencies:
   flutter_lints: ^3.0.0
   integration_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/sedraicon.jpeg"
+  min_sdk_android: 21
+  adaptive_icon_foreground: "assets/images/sedraicon2_ic.png"
+  adaptive_icon_background: "#ffffff"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/audio/
+    - assets/lottie/
+    - assets/neck_stretch.json
   fonts:
     - family: MontserratAlt
       fonts:

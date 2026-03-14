@@ -200,21 +200,22 @@ class _BadgeCardState extends ConsumerState<BadgeCard>
   }
 
   (double, String) _calculateProgress(UserModel? user) {
-    if (user == null)
+    if (user == null) {
       return (
         0.0,
         "0 / ${widget.badge.conditionValue} ${widget.badge.unitLabel}"
       );
+    }
 
     int current = 0;
     int target = widget.badge.conditionValue;
 
     switch (widget.badge.conditionType) {
       case BadgeConditionType.streak:
-        current = user.currentStreak;
+        current = user.longestStreak;
         break;
       case BadgeConditionType.tasksCompleted:
-        current = user.points ~/ 10;
+        current = user.totalSessions;
         break;
       case BadgeConditionType.firstLogin:
         current = 0;
@@ -243,10 +244,12 @@ class _BadgeCardState extends ConsumerState<BadgeCard>
 
   int _getProfileProgress(UserModel user) {
     int count = 0;
-    if (user.displayName != null && user.displayName!.isNotEmpty) count++;
-    if (user.photoUrl != null && user.photoUrl!.isNotEmpty) count++;
-    if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) count++;
-    if (user.country != null && user.country!.isNotEmpty) count++;
+    if (user.displayName != null && user.displayName!.trim().isNotEmpty)
+      count++;
+    if (user.photoUrl != null && user.photoUrl!.trim().isNotEmpty) count++;
+    if (user.phoneNumber != null && user.phoneNumber!.trim().isNotEmpty)
+      count++;
+    if (user.country != null && user.country!.trim().isNotEmpty) count++;
     return count;
   }
 
